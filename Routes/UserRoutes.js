@@ -11,6 +11,7 @@ router.post('/register', userController.registerUser);
 
 // User Login
 router.post('/login', userController.loginUser);
+router.get('/', userController.getAllUsers);
 
 // Get User by ID
 router.get('/:id', userController.getUserById);

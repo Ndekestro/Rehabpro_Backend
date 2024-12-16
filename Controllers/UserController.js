@@ -28,60 +28,40 @@ exports.registerUser = (req, res) => {
   });
 };
 
-// User Login
-// controllers/userController.js
 
 exports.loginUser = (req, res) => {
-  const { username, password } = req.body;
+  const { identifier, password } = req.body; 
 
-  console.log('Received login request:', { username, password });
+  const query = 'SELECT * FROM users WHERE username = ? OR email = ?';
+  db.query(query, [identifier, identifier], async (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (results.length === 0) return res.status(404).json({ message: 'User not found' });
 
-  // Ensure the username and password are provided
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
-  }
+      const user = results[0];
 
-  // Query to check if the user exists by username
-  const query = 'SELECT * FROM users WHERE username = ?';
+      try {
+          // Compare plaintext password with the hashed password
+          const isMatch = await bcrypt.compare(password, user.password);
+          if (!isMatch) {
+              return res.status(401).json({ message: 'Invalid password' });
+          }
 
-  db.query(query, [username], (err, results) => {
-    if (err) {
-      console.error('Error during login query:', err);
-      return res.status(500).json({ error: 'Error during login' });
-    }
+          // Generate a JWT token
+          const token = jwt.sign(
+              { id: user.id, role: user.role },
+              JWT_SECRET, // JWT secret key
+              { expiresIn: '12h' } // Token validity
+          );
 
-    if (results.length === 0) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
-    const user = results[0];
-
-    // Compare the provided password with the stored password hash
-    bcrypt.compare(password, user.password, (err, isMatch) => {
-      if (err) {
-        console.error('Error comparing passwords:', err);
-        return res.status(500).json({ error: 'Error comparing passwords' });
+          // Respond with success and token
+          res.status(200).json({
+              message: 'Login successful',
+              token, // Return the generated JWT token
+              user: { id: user.id, username: user.username, role: user.role }, // Include user details
+          });
+      } catch (compareError) {
+          return res.status(500).json({ error: compareError.message });
       }
-
-      if (!isMatch) {
-        return res.status(400).json({ error: 'Invalid password' });
-      }
-
-      // Generate a JWT token with user id and role
-      const token = jwt.sign(
-        { id: user.id, role: user.role },
-        JWT_SECRET, // Use the hardcoded JWT secret
-        { expiresIn: '12h' } // Token expires in 12 hours
-      );
-
-      // Send the token, user role, and user id in the response
-      res.status(200).json({
-        message: 'Login successful',
-        token,          // JWT token
-        role: user.role, // User role (e.g., admin, participant)
-        userId: user.id  // User ID
-      });
-    });
   });
 };
 
@@ -122,5 +102,17 @@ exports.deleteUser = (req, res) => {
       return res.status(500).json({ error: 'Error deleting user' });
     }
     res.status(200).json({ message: 'User deleted successfully' });
+  });
+};
+exports.getAllUsers = (req, res) => {
+  const query = 'SELECT * FROM users';
+  db.query(query, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error retrieving users' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'No users found' });
+    }
+    res.status(200).json({ users: results });
   });
 };

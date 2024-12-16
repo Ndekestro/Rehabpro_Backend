@@ -5,9 +5,9 @@ const mysql = require('mysql2');
 // Create MySQL connection
 const connection = mysql.createConnection({
   host: 'localhost',
-  user: 'root',  // Replace with your MySQL username
-  password: '',  // Replace with your MySQL password (empty if no password set)
-  database: 'rehab_eval' // Replace with your database name
+  user: 'root',  
+  password: 'Admin@123',  
+  database: 'rehab' 
 });
 
 // Connect to the database
